@@ -1,0 +1,31 @@
+﻿@using Syncfusion.Blazor.Popups;
+
+<SfDialog @ref="DialogWarning" @bind-Visible="@IsVisible" IsModal="true" Width="300px" ShowCloseIcon="true">
+    <DialogTemplates>
+        <Header> @WarningHeaderMessage </Header>
+        <Content>@WarningContentMessage</Content>
+    </DialogTemplates>
+    <DialogButtons>
+        <DialogButton Content="OK" IsPrimary="true" OnClick="@CloseDialog" />
+    </DialogButtons>
+</SfDialog>
+
+@code {
+    SfDialog DialogWarning;
+    public bool IsVisible { get; set; } = false;
+
+    [Parameter] public string WarningHeaderMessage { get; set; }
+    [Parameter] public string WarningContentMessage { get; set; }
+
+    public void OpenDialog()
+    {
+        this.IsVisible = true;
+        this.StateHasChanged();
+    }
+
+    public void CloseDialog()
+    {
+        this.IsVisible = false;
+        this.StateHasChanged();
+    }
+}

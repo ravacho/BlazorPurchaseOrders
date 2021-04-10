@@ -44,6 +44,12 @@ namespace BlazorPurchaseOrders
             services.AddDatabaseDeveloperPageExceptionFilter();
             services.AddSingleton<WeatherForecastService>();
 
+            services.AddScoped<IPOHeaderService, POHeaderService>();
+            services.AddScoped<IPOLineService, POLineService>();
+            services.AddScoped<IProductService, ProductService>();
+            services.AddScoped<ISupplierService, SupplierService>();
+            services.AddScoped<ITaxService, TaxService>();
+
             var sqlConnectionConfiguration = new SqlConnectionConfiguration(Configuration.GetConnectionString("SqlDBContext"));
             services.AddSingleton(sqlConnectionConfiguration);
 

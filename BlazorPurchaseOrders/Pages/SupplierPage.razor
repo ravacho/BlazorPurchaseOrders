@@ -1,0 +1,294 @@
+﻿@page "/supplier"
+@using BlazorPurchaseOrders.Data
+@inject ISupplierService SupplierService
+@using Syncfusion.Blazor.Navigations
+
+<h3>Supplier Rates</h3>
+<br />
+
+<SfGrid DataSource="@supplier"
+        Toolbar="@Toolbaritems">
+    <GridColumns>
+        <GridColumn Field="@nameof(Supplier.SupplierName)"
+                    HeaderText="Supplier Name"
+                    TextAlign="TextAlign.Left"
+                    Width="60">
+        </GridColumn>
+        <GridColumn Field="@nameof(Supplier.SupplierAddress1)"
+                    HeaderText="Address"
+                    TextAlign="TextAlign.Left"
+                    Format="p2"
+                    Width="40">
+        </GridColumn>
+        <GridColumn Field="@nameof(Supplier.SupplierEmail)"
+                    HeaderText="Email"
+                    TextAlign="TextAlign.Left"
+                    Format="p2"
+                    Width="40">
+        </GridColumn>
+    </GridColumns>
+    <GridEvents RowSelected="RowSelectHandler" OnToolbarClick="ToolbarClickHandler" TValue="Supplier"></GridEvents>
+</SfGrid>
+
+<SfDialog @ref="DialogAddEditSupplier" IsModal="true" Width="500px" ShowCloseIcon="true" Visible="false">
+    <DialogTemplates>
+        <Header> @HeaderText </Header>
+    </DialogTemplates>
+    <EditForm Model="@addeditSupplier" OnValidSubmit="@SupplierSave">
+        <div>
+            <SfTextBox Enabled="true" Placeholder="Name"
+                       FloatLabelType="@FloatLabelType.Always"
+                       @bind-Value="addeditSupplier.SupplierName"></SfTextBox>
+            <SfTextBox Enabled="true" Placeholder="Address" Width="50"
+                       Format="p2"
+                       FloatLabelType="@FloatLabelType.Never"
+                       @bind-Value="addeditSupplier.SupplierAddress1"></SfTextBox>
+            <SfTextBox Enabled="true" Placeholder="" Width="50"
+                       Format="p2"
+                       FloatLabelType="@FloatLabelType.Never"
+                       @bind-Value="addeditSupplier.SupplierAddress2"></SfTextBox>
+            <SfTextBox Enabled="true" Placeholder="" Width="50"
+                       Format="p2"
+                       FloatLabelType="@FloatLabelType.Never"
+                       @bind-Value="addeditSupplier.SupplierAddress3"></SfTextBox>
+            <SfTextBox Enabled="true" Placeholder="Post Code" Width="50"
+                       Format="p2"
+                       FloatLabelType="@FloatLabelType.Auto"
+                       @bind-Value="addeditSupplier.SupplierPostCode"></SfTextBox>
+            <SfTextBox Enabled="true" Placeholder="Email" Width="50"
+                       Format="p2"
+                       FloatLabelType="@FloatLabelType.Auto"
+                       @bind-Value="addeditSupplier.SupplierEmail"></SfTextBox>
+
+        </div>
+        <br /><br />
+        <div class="e-footer-content">
+            <div class="button-container">
+                <button type="button" class="e-btn e-normal" @onclick="@CloseDialog">Cancel</button>
+                <button type="submit" class="e-btn e-normal e-primary">Save</button>
+            </div>
+        </div>
+    </EditForm>
+</SfDialog>
+
+<SfDialog @ref="DialogDeleteSupplier" IsModal="true" Width="500px" ShowCloseIcon="true" Visible="false">
+    <DialogTemplates>
+        <Header> Confirm Delete </Header>
+        <Content>
+            <SfTextBox Enabled="false" Placeholder="Name"
+                       FloatLabelType="@FloatLabelType.Always"
+                       @bind-Value="addeditSupplier.SupplierName"></SfTextBox>
+            <SfTextBox Enabled="true" Placeholder="Address" Width="50"
+                       Format="p2"
+                       FloatLabelType="@FloatLabelType.Never"
+                       @bind-Value="addeditSupplier.SupplierAddress1"></SfTextBox>
+            <SfTextBox Enabled="true" Placeholder="" Width="50"
+                       Format="p2"
+                       FloatLabelType="@FloatLabelType.Never"
+                       @bind-Value="addeditSupplier.SupplierAddress2"></SfTextBox>
+            <SfTextBox Enabled="true" Placeholder="" Width="50"
+                       Format="p2"
+                       FloatLabelType="@FloatLabelType.Never"
+                       @bind-Value="addeditSupplier.SupplierAddress3"></SfTextBox>
+            <SfTextBox Enabled="true" Placeholder="Post Code" Width="50"
+                       Format="p2"
+                       FloatLabelType="@FloatLabelType.Auto"
+                       @bind-Value="addeditSupplier.SupplierPostCode"></SfTextBox>
+            <SfTextBox Enabled="true" Placeholder="Email" Width="50"
+                       Format="p2"
+                       FloatLabelType="@FloatLabelType.Auto"
+                       @bind-Value="addeditSupplier.SupplierEmail"></SfTextBox>
+            <br />
+            <br />
+            <span class="text-danger">Please confirm that you want to delete this record</span>
+        </Content>
+    </DialogTemplates>
+    <DialogButtons>
+        <DialogButton Content="Delete" IsPrimary="true" OnClick="@ConfirmDeleteYes" />
+        <DialogButton Content="Cancel" IsPrimary="false" OnClick="@ConfirmDeleteNo" />
+    </DialogButtons>
+</SfDialog>
+
+<WarningPage @ref="Warning" WarningHeaderMessage="@WarningHeaderMessage" WarningContentMessage="@WarningContentMessage" />
+
+@code {
+
+    IEnumerable<Supplier> supplier;
+    private List<ItemModel> Toolbaritems = new List<ItemModel>();
+
+    SfDialog DialogAddEditSupplier;
+    Supplier addeditSupplier = new Supplier();
+    string HeaderText = "";
+
+    WarningPage Warning;
+    string WarningHeaderMessage = "";
+    string WarningContentMessage = "";
+
+    public int SelectedSupplierId { get; set; } = 0;
+
+    SfDialog DialogDeleteSupplier;
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        //Populate the list of VAT objects from the VAT table.
+        supplier = await SupplierService.SupplierList();
+
+        Toolbaritems.Add(new ItemModel() { Text = "Add", TooltipText = "Add a new Supplier Rate", PrefixIcon = "e-add" });
+        Toolbaritems.Add(new ItemModel() { Text = "Edit", TooltipText = "Edit selected Supplier Rate", PrefixIcon = "e-edit" });
+        Toolbaritems.Add(new ItemModel() { Text = "Delete", TooltipText = "Delete selected Supplier Rate", PrefixIcon = "e-delete" });
+    }
+
+    public async Task ToolbarClickHandler(Syncfusion.Blazor.Navigations.ClickEventArgs args)
+    {
+        if (args.Item.Text == "Add")
+        {
+            //Code for adding goes here
+            addeditSupplier = new Supplier();             // Ensures a blank form when adding
+            HeaderText = "Add Supplier Rate";
+            await this.DialogAddEditSupplier.Show();
+        }
+        if (args.Item.Text == "Edit")
+        {
+            //Code for editing goes here
+            //Check that a Supplier Rate has been selected
+            if (SelectedSupplierId == 0)
+            {
+                WarningHeaderMessage = "Warning!";
+                WarningContentMessage = "Please select a Supplier Rate from the grid.";
+                Warning.OpenDialog();
+            }
+            else
+            {
+                //populate addeditSupplier (temporary data set used for the editing process)
+                HeaderText = "Edit Supplier Rate";
+                addeditSupplier = await SupplierService.Supplier_GetOne(SelectedSupplierId);
+                await this.DialogAddEditSupplier.Show();
+            }
+
+        }
+        if (args.Item.Text == "Delete")
+        {
+            //code for deleting goes here
+            if (SelectedSupplierId == 0)
+            {
+                WarningHeaderMessage = "Warning!";
+                WarningContentMessage = "Please select a Supplier Rate from the grid.";
+                Warning.OpenDialog();
+            }
+            else
+            {
+                //populate addeditSupplier (temporary data set used for the editing process)
+                HeaderText = "Delete Supplier Rate";
+                addeditSupplier = await SupplierService.Supplier_GetOne(SelectedSupplierId);
+                await this.DialogDeleteSupplier.Show();
+            }
+        }
+    }
+
+    protected async Task SupplierSave()
+    {
+        if (addeditSupplier.SupplierID == 0)
+        {
+            int Success = await SupplierService.SupplierInsert(
+                addeditSupplier.SupplierName,
+                addeditSupplier.SupplierAddress1,
+                addeditSupplier.SupplierAddress2,
+                addeditSupplier.SupplierAddress3,
+                addeditSupplier.SupplierPostCode,
+                addeditSupplier.SupplierEmail);
+            if (Success != 0)
+            {
+                //Supplier Rate already exists
+                WarningHeaderMessage = "Warning!";
+                WarningContentMessage = "This Supplier Description already exists; it cannot be added again.";
+                Warning.OpenDialog();
+                // Data is left in the dialog so the user can see the problem.
+            }
+            else
+            {
+                // Clears the dialog and is ready for another entry
+                // User must specifically close or cancel the dialog
+                addeditSupplier = new Supplier();
+            }
+        }
+        else
+        {
+            // Item is being edited
+            int Success = await SupplierService.SupplierUpdate(
+                addeditSupplier.SupplierID,
+                addeditSupplier.SupplierName,
+                addeditSupplier.SupplierAddress1,
+                addeditSupplier.SupplierAddress2,
+                addeditSupplier.SupplierAddress3,
+                addeditSupplier.SupplierPostCode,
+                addeditSupplier.SupplierEmail,
+                addeditSupplier.SupplierIsArchived);
+
+            if (Success != 0)
+            {
+                //Supplier Rate already exists
+                WarningHeaderMessage = "Warning!";
+                WarningContentMessage = "This Supplier Description already exists; it cannot be added again.";
+                Warning.OpenDialog();
+            }
+            else
+            {
+                await this.DialogAddEditSupplier.Hide();
+                this.StateHasChanged();
+                addeditSupplier = new Supplier();
+                SelectedSupplierId = 0;
+            }
+        }
+
+        //Always refresh datagrid
+        supplier = await SupplierService.SupplierList();
+        StateHasChanged();
+    }
+
+    private async Task CloseDialog()
+    {
+        await this.DialogAddEditSupplier.Hide();
+    }
+
+    public void RowSelectHandler(RowSelectEventArgs<Supplier> args)
+    {
+        //{args.Data} returns the current selected records.
+        SelectedSupplierId = args.Data.SupplierID;
+    }
+
+    public async void ConfirmDeleteNo()
+    {
+        await DialogDeleteSupplier.Hide();
+        SelectedSupplierId = 0;
+    }
+
+    public async void ConfirmDeleteYes()
+    {
+        int Success = await SupplierService.SupplierUpdate(
+                addeditSupplier.SupplierID,
+                addeditSupplier.SupplierName,
+                addeditSupplier.SupplierAddress1,
+                addeditSupplier.SupplierAddress2,
+                addeditSupplier.SupplierAddress3,
+                addeditSupplier.SupplierPostCode,
+                addeditSupplier.SupplierEmail,
+                addeditSupplier.SupplierIsArchived);
+
+        if (Success != 0)
+        {
+            //Supplier Rate already exists - THis should never happen when marking a record 'IsArchived'.
+            WarningHeaderMessage = "Warning!";
+            WarningContentMessage = "Unknown error has occurred - the record has not been deleted!";
+            Warning.OpenDialog();
+        }
+        else
+        {
+            await this.DialogDeleteSupplier.Hide();
+            supplier = await SupplierService.SupplierList();
+            this.StateHasChanged();
+            addeditSupplier = new Supplier();
+            SelectedSupplierId = 0;
+        }
+    }
+}

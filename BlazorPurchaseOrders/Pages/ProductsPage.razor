@@ -1,0 +1,290 @@
+﻿@page "/product"
+@using BlazorPurchaseOrders.Data
+@inject IProductService ProductService
+@inject ISupplierService SupplierService
+@using Syncfusion.Blazor.Navigations
+
+<h3>Product Rates</h3>
+<br />
+
+<SfGrid DataSource="@product"
+        Toolbar="@Toolbaritems">
+    <GridColumns>
+        <GridColumn Field="@nameof(Product.ProductCode)"
+                    HeaderText="Product Name"
+                    TextAlign="TextAlign.Left"
+                    Width="60">
+        </GridColumn>
+        <GridColumn Field="@nameof(Product.ProductDescription)"
+                    HeaderText="Address"
+                    TextAlign="TextAlign.Left"
+                    Format="p2"
+                    Width="40">
+        </GridColumn>
+        <GridColumn Field="@nameof(Product.ProductUnitPrice)"
+                    HeaderText="Email"
+                    TextAlign="TextAlign.Right"
+                    Format="N2"
+                    Width="40">
+        </GridColumn>
+        <GridColumn Field="@nameof(Product.SupplierName)"
+                    HeaderText="Supplier"
+                    TextAlign="TextAlign.Left"
+                    Width="60">
+        </GridColumn>
+    </GridColumns>
+    <GridEvents RowSelected="RowSelectHandler" OnToolbarClick="ToolbarClickHandler" TValue="Product"></GridEvents>
+</SfGrid>
+
+<SfDialog @ref="DialogAddEditProduct" IsModal="true" Width="500px" ShowCloseIcon="true" Visible="false">
+    <DialogTemplates>
+        <Header> @HeaderText </Header>
+    </DialogTemplates>
+    <EditForm Model="@addeditProduct" OnValidSubmit="@ProductSave">
+        <div>
+            <SfTextBox Enabled="true" Placeholder="Name"
+                       FloatLabelType="@FloatLabelType.Auto"
+                       @bind-Value="addeditProduct.ProductCode"></SfTextBox>
+            <SfTextBox Enabled="true" Placeholder="Address" Width="50"
+                       FloatLabelType="@FloatLabelType.Auto"
+                       @bind-Value="addeditProduct.ProductDescription"></SfTextBox>
+            <SfNumericTextBox Enabled="true" Placeholder="" Width="50"
+                              FloatLabelType="@FloatLabelType.Auto"
+                              @bind-Value="addeditProduct.ProductUnitPrice"></SfNumericTextBox>
+            <SfDropDownList DataSource="@supplier"
+                            TItem="Supplier"
+                            TValue="int"
+                            Text="SupplierID"
+                            @bind-Value="addeditProduct.ProductSupplierID"
+                            FloatLabelType="@FloatLabelType.Auto"
+                            Placeholder="Select a Supplier"
+                            Enabled="true">
+                <DropDownListFieldSettings Text="SupplierName" Value="SupplierID"></DropDownListFieldSettings>
+            </SfDropDownList>
+
+
+        </div>
+        <br /><br />
+        <div class="e-footer-content">
+            <div class="button-container">
+                <button type="button" class="e-btn e-normal" @onclick="@CloseDialog">Cancel</button>
+                <button type="submit" class="e-btn e-normal e-primary">Save</button>
+            </div>
+        </div>
+    </EditForm>
+</SfDialog>
+
+<SfDialog @ref="DialogDeleteProduct" IsModal="true" Width="500px" ShowCloseIcon="true" Visible="false">
+    <DialogTemplates>
+        <Header> Confirm Delete </Header>
+        <Content>
+            <SfTextBox Enabled="false" Placeholder="Name"
+                       FloatLabelType="@FloatLabelType.Auto"
+                       @bind-Value="addeditProduct.ProductCode"></SfTextBox>
+            <SfTextBox Enabled="true" Placeholder="Address" Width="50"
+                       FloatLabelType="@FloatLabelType.Auto"
+                       @bind-Value="addeditProduct.ProductDescription"></SfTextBox>
+            <SfNumericTextBox Enabled="true" Placeholder="" Width="50"
+                              FloatLabelType="@FloatLabelType.Auto"
+                              @bind-Value="addeditProduct.ProductUnitPrice"></SfNumericTextBox>
+            <SfDropDownList DataSource="@supplier"
+                            TItem="Supplier"
+                            TValue="int"
+                            Text="SupplierID"
+                            @bind-Value="addeditProduct.ProductSupplierID"
+                            FloatLabelType="@FloatLabelType.Auto"
+                            Placeholder="Select a Supplier"
+                            Enabled="false">
+                <DropDownListFieldSettings Text="SupplierName" Value="SupplierID"></DropDownListFieldSettings>
+            </SfDropDownList>
+
+            <br />
+            <br />
+            <span class="text-danger">Please confirm that you want to delete this record</span>
+        </Content>
+    </DialogTemplates>
+    <DialogButtons>
+        <DialogButton Content="Delete" IsPrimary="true" OnClick="@ConfirmDeleteYes" />
+        <DialogButton Content="Cancel" IsPrimary="false" OnClick="@ConfirmDeleteNo" />
+    </DialogButtons>
+</SfDialog>
+
+<WarningPage @ref="Warning" WarningHeaderMessage="@WarningHeaderMessage" WarningContentMessage="@WarningContentMessage" />
+
+@code {
+
+    IEnumerable<Product> product;
+    IEnumerable<Supplier> supplier;
+    private List<ItemModel> Toolbaritems = new List<ItemModel>();
+
+    SfDialog DialogAddEditProduct;
+    Product addeditProduct = new Product();
+    string HeaderText = "";
+
+    WarningPage Warning;
+    string WarningHeaderMessage = "";
+    string WarningContentMessage = "";
+
+    public int SelectedProductId { get; set; } = 0;
+
+    SfDialog DialogDeleteProduct;
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        //Populate the list of VAT objects from the VAT table.
+        product = await ProductService.ProductList();
+        supplier = await SupplierService.SupplierList();
+
+        Toolbaritems.Add(new ItemModel() { Text = "Add", TooltipText = "Add a new Product Rate", PrefixIcon = "e-add" });
+        Toolbaritems.Add(new ItemModel() { Text = "Edit", TooltipText = "Edit selected Product Rate", PrefixIcon = "e-edit" });
+        Toolbaritems.Add(new ItemModel() { Text = "Delete", TooltipText = "Delete selected Product Rate", PrefixIcon = "e-delete" });
+    }
+
+    public async Task ToolbarClickHandler(Syncfusion.Blazor.Navigations.ClickEventArgs args)
+    {
+        if (args.Item.Text == "Add")
+        {
+            //Code for adding goes here
+            addeditProduct = new Product();             // Ensures a blank form when adding
+            HeaderText = "Add Product Rate";
+            await this.DialogAddEditProduct.Show();
+        }
+        if (args.Item.Text == "Edit")
+        {
+            //Code for editing goes here
+            //Check that a Product Rate has been selected
+            if (SelectedProductId == 0)
+            {
+                WarningHeaderMessage = "Warning!";
+                WarningContentMessage = "Please select a Product Rate from the grid.";
+                Warning.OpenDialog();
+            }
+            else
+            {
+                //populate addeditProduct (temporary data set used for the editing process)
+                HeaderText = "Edit Product Rate";
+                addeditProduct = await ProductService.Product_GetOne(SelectedProductId);
+                await this.DialogAddEditProduct.Show();
+            }
+
+        }
+        if (args.Item.Text == "Delete")
+        {
+            //code for deleting goes here
+            if (SelectedProductId == 0)
+            {
+                WarningHeaderMessage = "Warning!";
+                WarningContentMessage = "Please select a Product Rate from the grid.";
+                Warning.OpenDialog();
+            }
+            else
+            {
+                //populate addeditProduct (temporary data set used for the editing process)
+                HeaderText = "Delete Product Rate";
+                addeditProduct = await ProductService.Product_GetOne(SelectedProductId);
+                await this.DialogDeleteProduct.Show();
+            }
+        }
+    }
+
+    protected async Task ProductSave()
+    {
+        if (addeditProduct.ProductID == 0)
+        {
+            int Success = await ProductService.ProductInsert(
+                addeditProduct.ProductCode,
+                addeditProduct.ProductDescription,
+                addeditProduct.ProductUnitPrice,
+                addeditProduct.ProductSupplierID);
+            if (Success != 0)
+            {
+                //Product Rate already exists
+                WarningHeaderMessage = "Warning!";
+                WarningContentMessage = "This Product Description already exists; it cannot be added again.";
+                Warning.OpenDialog();
+                // Data is left in the dialog so the user can see the problem.
+            }
+            else
+            {
+                // Clears the dialog and is ready for another entry
+                // User must specifically close or cancel the dialog
+                addeditProduct = new Product();
+            }
+        }
+        else
+        {
+            // Item is being edited
+            int Success = await ProductService.ProductUpdate(
+                addeditProduct.ProductID,
+                addeditProduct.ProductCode,
+                addeditProduct.ProductDescription,
+                addeditProduct.ProductUnitPrice,
+                addeditProduct.ProductSupplierID,
+                addeditProduct.ProductIsArchived);
+
+            if (Success != 0)
+            {
+                //Product Rate already exists
+                WarningHeaderMessage = "Warning!";
+                WarningContentMessage = "This Product Description already exists; it cannot be added again.";
+                Warning.OpenDialog();
+            }
+            else
+            {
+                await this.DialogAddEditProduct.Hide();
+                this.StateHasChanged();
+                addeditProduct = new Product();
+                SelectedProductId = 0;
+            }
+        }
+
+        //Always refresh datagrid
+        product = await ProductService.ProductList();
+        StateHasChanged();
+    }
+
+    private async Task CloseDialog()
+    {
+        await this.DialogAddEditProduct.Hide();
+    }
+
+    public void RowSelectHandler(RowSelectEventArgs<Product> args)
+    {
+        //{args.Data} returns the current selected records.
+        SelectedProductId = args.Data.ProductID;
+    }
+
+    public async void ConfirmDeleteNo()
+    {
+        await DialogDeleteProduct.Hide();
+        SelectedProductId = 0;
+    }
+
+    public async void ConfirmDeleteYes()
+    {
+        int Success = await ProductService.ProductUpdate(
+                addeditProduct.ProductID,
+                addeditProduct.ProductCode,
+                addeditProduct.ProductDescription,
+                addeditProduct.ProductUnitPrice,
+                addeditProduct.ProductSupplierID,
+                addeditProduct.ProductIsArchived);
+
+        if (Success != 0)
+        {
+            //Product Rate already exists - THis should never happen when marking a record 'IsArchived'.
+            WarningHeaderMessage = "Warning!";
+            WarningContentMessage = "Unknown error has occurred - the record has not been deleted!";
+            Warning.OpenDialog();
+        }
+        else
+        {
+            await this.DialogDeleteProduct.Hide();
+            product = await ProductService.ProductList();
+            this.StateHasChanged();
+            addeditProduct = new Product();
+            SelectedProductId = 0;
+        }
+    }
+}
