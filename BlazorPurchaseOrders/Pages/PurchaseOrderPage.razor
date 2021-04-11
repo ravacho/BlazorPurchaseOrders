@@ -1,0 +1,153 @@
+﻿@page "/purchaseorder/{POHeaderID:int}"
+@using BlazorPurchaseOrders.Data
+
+@inject NavigationManager NavigationManager
+@inject ISupplierService SupplierService
+@inject IPOHeaderService POHeaderService
+
+@using Microsoft.AspNetCore.Components.Authorization
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@using System
+@using System.Collections.Generic
+
+<h3>@pagetitle</h3>
+
+<EditForm Model="@orderaddedit" OnValidSubmit="@OrderSave">
+    <div class="grid-container">
+        <div class="grid-child left-column">
+            <SfDropDownList DataSource="@supplier"
+                            TItem="Supplier"
+                            TValue="int"
+                            Text="SupplierID"
+                            @bind-Value="orderaddedit.POHeaderSupplierID"
+                            FloatLabelType="@FloatLabelType.Auto"
+                            Placeholder="Select a Supplier"
+                            Enabled="true">
+                <DropDownListFieldSettings Text="SupplierName" Value="SupplierID"></DropDownListFieldSettings>
+                <DropDownListEvents TItem="Supplier" TValue="int" ValueChange="OnChangeSupplier"></DropDownListEvents>
+            </SfDropDownList>
+
+            <SfTextBox Enabled="true" Placeholder="Address"
+                       FloatLabelType="@FloatLabelType.Always"
+                       @bind-Value="orderaddedit.POHeaderSupplierAddress1"></SfTextBox>
+            <SfTextBox Enabled="true" Placeholder=""
+                       FloatLabelType="@FloatLabelType.Never"
+                       @bind-Value="orderaddedit.POHeaderSupplierAddress2"></SfTextBox>
+            <SfTextBox Enabled="true" Placeholder=""
+                       FloatLabelType="@FloatLabelType.Never"
+                       @bind-Value="orderaddedit.POHeaderSupplierAddress3"></SfTextBox>
+            <SfTextBox Enabled="true" Placeholder="Post Code"
+                       FloatLabelType="@FloatLabelType.Never"
+                       @bind-Value="orderaddedit.POHeaderSupplierPostCode"></SfTextBox>
+
+            <SfTextBox Enabled="true" Placeholder="Email"
+                           FloatLabelType="@FloatLabelType.Auto"
+                       @bind-Value="orderaddedit.POHeaderSupplierEmail"></SfTextBox>
+        </div>
+        <div class="grid-child right-column">
+            <SfNumericTextBox Enabled="false" Placeholder="Order No"
+                              FloatLabelType="@FloatLabelType.Always"
+                              ShowSpinButton="false"
+                              @bind-Value="orderaddedit.POHeaderOrderNumber"></SfNumericTextBox>
+            <SfDatePicker TValue="DateTime"
+                          Placeholder='Order Date'
+                          FloatLabelType="@FloatLabelType.Auto"
+                          @bind-Value="@orderaddedit.POHeaderOrderDate"></SfDatePicker>
+            <SfTextBox Enabled="false" Placeholder="Requested by"
+                       FloatLabelType="@FloatLabelType.Always"
+                       @bind-Value="orderaddedit.POHeaderRequestedBy"></SfTextBox>
+        </div>
+    </div>
+    <br /><br />
+
+    <div class="e-footer-content">
+        <div class="button-container">
+            <button type="submit" class="e-btn e-normal e-primary">Save</button>
+            <button type="button" class="e-btn e-normal" @onclick="@Cancel">Cancel</button>
+        </div>
+    </div>
+
+</EditForm>
+<style>
+    .grid-container {
+        display: grid;
+        max-width: 900px; /* Maximum width of the whole container - in this case both columns */
+        grid-template-columns: 1fr 1fr; /* Relative width of each column (1fr 1fr is equivalent to, say, 33fr 33fr */
+        grid-gap: 75px; /* size of the gap between columns */
+    }
+</style>
+
+@code {
+    private string UserName;
+    POHeader orderaddedit = new POHeader();
+    IEnumerable<Supplier> supplier;
+
+    string pagetitle = "Add an Order";
+
+    [Parameter]
+    public int POHeaderID { get; set; }
+
+    //Executes on page open, sets headings and gets data in the case of edit
+    protected override async Task OnInitializedAsync()
+    {
+        supplier = await SupplierService.SupplierList();
+        orderaddedit.POHeaderOrderDate = DateTime.Now;
+
+        if (POHeaderID == 0)
+        {
+            pagetitle = "Add an Order";
+        }
+        else
+        {
+            pagetitle = "Edit an Order";
+        }
+
+        //Get user if logged in and populate the 'Requested by' column
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity.IsAuthenticated)
+        {
+            UserName = user.Identity.Name;
+        }
+        else
+        {
+            UserName = "The user is NOT authenticated.";
+        }
+
+        orderaddedit.POHeaderRequestedBy = UserName;
+    }
+
+    // Executes OnValidSubmit of EditForm above
+    protected async Task OrderSave()
+    {
+        if (POHeaderID == 0)
+        {
+            //Save the record
+            bool Success = await POHeaderService.POHeaderInsert(orderaddedit);
+
+            NavigationManager.NavigateTo("/");
+        }
+        else
+        {
+            NavigationManager.NavigateTo("/");
+        }
+
+    }
+
+    //Executes if user clicks the Cancel button.
+    void Cancel()
+    {
+        NavigationManager.NavigateTo("/");
+    }
+
+    //Populates the supplier address when Supplier drop-down changed.
+    private void OnChangeSupplier(Syncfusion.Blazor.DropDowns.ChangeEventArgs<int, Supplier> args)
+    {
+        this.orderaddedit.POHeaderSupplierAddress1 = args.ItemData.SupplierAddress1;
+        this.orderaddedit.POHeaderSupplierAddress2 = args.ItemData.SupplierAddress2;
+        this.orderaddedit.POHeaderSupplierAddress3 = args.ItemData.SupplierAddress3;
+        this.orderaddedit.POHeaderSupplierPostCode = args.ItemData.SupplierPostCode;
+        this.orderaddedit.POHeaderSupplierEmail = args.ItemData.SupplierEmail;
+    }
+}

@@ -23,7 +23,7 @@ namespace BlazorPurchaseOrders.Data
             using (var conn = new SqlConnection(_configuration.Value))
             {
                 var parameters = new DynamicParameters();
-                parameters.Add("POHeaderOrderNumber", poheader.POHeaderOrderNumber, DbType.Int32);
+                //parameters.Add("POHeaderOrderNumber", poheader.POHeaderOrderNumber, DbType.Int32);
                 parameters.Add("POHeaderOrderDate", poheader.POHeaderOrderDate, DbType.Date);
                 parameters.Add("POHeaderSupplierID", poheader.POHeaderSupplierID, DbType.Int32);
                 parameters.Add("POHeaderSupplierAddress1", poheader.POHeaderSupplierAddress1, DbType.String);

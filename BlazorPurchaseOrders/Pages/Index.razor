@@ -1,7 +1,69 @@
 ﻿@page "/"
+@using BlazorPurchaseOrders.Data
 
-<h1>Hello, world!</h1>
+@inject IPOHeaderService POHeaderService
+@inject NavigationManager NavigationManager
 
-Welcome to your new app.
+<div class="col-sm-12">
+    <h3>Purchase Orders</h3>
+    <br />
+    <SfGrid DataSource="@poheader"
+            Toolbar="Toolbaritems">
+        <GridEvents OnToolbarClick="ToolbarClickHandler" TValue="POHeader"></GridEvents>
+        <GridColumns>
+            <GridColumn Field="@nameof(POHeader.POHeaderOrderNumber)"
+                        HeaderText="Order No"
+                        TextAlign="@TextAlign.Left"
+                        Width="20">
+            </GridColumn>
+            <GridColumn Field="@nameof(POHeader.POHeaderOrderDate)"
+                        HeaderText="Date"
+                        Format="d"
+                        Type="ColumnType.Date"
+                        TextAlign="@TextAlign.Center"
+                        Width="20">
+            </GridColumn>
+        </GridColumns>
+    </SfGrid>
 
-<SurveyPrompt Title="How is Blazor working for you?" />
+</div>
+
+@code {
+    private int POHeaderID;
+
+    // Create an empty list, named poheader, of empty POHeader objects.
+    IEnumerable<POHeader> poheader;
+
+    private List<ItemModel> Toolbaritems = new List<ItemModel>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        //Populate the list of countries objects from the Countries table.
+        poheader = await POHeaderService.POHeaderList();
+
+        Toolbaritems.Add(new ItemModel() { Text = "Add", TooltipText = "Add a new order", PrefixIcon = "e-add" });
+        Toolbaritems.Add(new ItemModel() { Text = "Edit", TooltipText = "Edit selected order", PrefixIcon = "e-edit" });
+        Toolbaritems.Add(new ItemModel() { Text = "Delete", TooltipText = "Delete selected order", PrefixIcon = "e-delete" });
+    }
+
+
+    public void ToolbarClickHandler(Syncfusion.Blazor.Navigations.ClickEventArgs args)
+    {
+        if (args.Item.Text == "Add")
+        {
+            //Code for adding goes here
+            POHeaderID = 0;
+            NavigationManager.NavigateTo($"/purchaseorder/{POHeaderID}");
+        }
+
+        if (args.Item.Text == "Edit")
+        {
+            //Code for editing
+        }
+
+        if (args.Item.Text == "Edit")
+        {
+            //Code for deleting
+        }
+    }
+}
