@@ -10,5 +10,6 @@ namespace BlazorPurchaseOrders.Data
         Task<IEnumerable<Product>> ProductList();
         Task<int> ProductUpdate(int ProductID, string ProductCode, string ProductDescription, decimal ProductUnitPrice, int ProductSupplierID, bool ProductIsArchived);
         Task<Product> Product_GetOne(int ProductID);
+        Task<IEnumerable<Product>> ProductListBySupplier(int SupplierID);
     }
 }
