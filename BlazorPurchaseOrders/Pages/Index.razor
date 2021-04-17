@@ -12,16 +12,32 @@
         <GridEvents OnToolbarClick="ToolbarClickHandler" TValue="POHeader"></GridEvents>
         <GridColumns>
             <GridColumn Field="@nameof(POHeader.POHeaderOrderNumber)"
-                        HeaderText="Order No"
+                        HeaderText="No"
                         TextAlign="@TextAlign.Left"
-                        Width="20">
+                        Width="10">
             </GridColumn>
             <GridColumn Field="@nameof(POHeader.POHeaderOrderDate)"
                         HeaderText="Date"
                         Format="d"
                         Type="ColumnType.Date"
                         TextAlign="@TextAlign.Center"
+                        Width="15">
+            </GridColumn>
+            <GridColumn Field="@nameof(POHeader.SupplierName)"
+                        HeaderText="Supplier"
+                        TextAlign="@TextAlign.Left"
+                        Width="40">
+            </GridColumn>
+            <GridColumn Field="@nameof(POHeader.TotalOrderValue)"
+                        HeaderText="Value"
+                        TextAlign="@TextAlign.Right"
+                        Format="C2"
                         Width="20">
+            </GridColumn>
+            <GridColumn Field="@nameof(POHeader.POHeaderRequestedBy)"
+                        HeaderText="Requested by"
+                        TextAlign="@TextAlign.Left"
+                        Width="40">
             </GridColumn>
         </GridColumns>
     </SfGrid>
@@ -29,12 +45,13 @@
 </div>
 
 @code {
-    private int POHeaderID;
 
     // Create an empty list, named poheader, of empty POHeader objects.
     IEnumerable<POHeader> poheader;
 
     private List<ItemModel> Toolbaritems = new List<ItemModel>();
+
+    int POHeaderID = 0;
 
     protected override async Task OnInitializedAsync()
     {
@@ -54,6 +71,7 @@
             //Code for adding goes here
             POHeaderID = 0;
             NavigationManager.NavigateTo($"/purchaseorder/{POHeaderID}");
+
         }
 
         if (args.Item.Text == "Edit")
@@ -67,3 +85,4 @@
         }
     }
 }
+5

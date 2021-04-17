@@ -39,6 +39,9 @@ namespace BlazorPurchaseOrders.Data
         [Required]
         public bool POHeaderIsArchived { get; set; }
 
-        public decimal POHeaderOrderTotal { get; }
+        public string SupplierName { get; }
+
+        public decimal TotalOrderValue { get; }
+
     }
 }
