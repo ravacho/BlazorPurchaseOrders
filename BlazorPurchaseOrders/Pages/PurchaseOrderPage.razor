@@ -8,6 +8,7 @@
 @inject IProductService ProductService
 @inject ITaxService TaxService
 
+
 @using Microsoft.AspNetCore.Components.Authorization
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @using System
@@ -17,8 +18,9 @@
 <h3>@pagetitle</h3>
 
 <EditForm Model="@orderaddedit" OnValidSubmit="@OrderSave">
+    <DataAnnotationsValidator />
     <div class="grid-container">
-        <div class="grid-child left-column"
+        <div class="grid-child left-column">
             <SfDropDownList DataSource="@supplier"
                             TItem="Supplier"
                             TValue="int"
@@ -36,16 +38,15 @@
                        @bind-Value="orderaddedit.POHeaderSupplierAddress1"></SfTextBox>
             <ValidationMessage For="@(() => orderaddedit.POHeaderSupplierAddress1)" />
 
-
             <SfTextBox Enabled="true" Placeholder=""
                        FloatLabelType="@FloatLabelType.Never"
                        @bind-Value="orderaddedit.POHeaderSupplierAddress2"></SfTextBox>
             <ValidationMessage For="@(() => orderaddedit.POHeaderSupplierAddress2)" />
 
-
             <SfTextBox Enabled="true" Placeholder=""
                        FloatLabelType="@FloatLabelType.Never"
                        @bind-Value="orderaddedit.POHeaderSupplierAddress3"></SfTextBox>
+            <ValidationMessage For="@(() => orderaddedit.POHeaderSupplierAddress3)" />
 
             <SfTextBox Enabled="true" Placeholder="Post Code"
                        FloatLabelType="@FloatLabelType.Never"
@@ -56,7 +57,6 @@
                        FloatLabelType="@FloatLabelType.Auto"
                        @bind-Value="orderaddedit.POHeaderSupplierEmail"></SfTextBox>
             <ValidationMessage For="@(() => orderaddedit.POHeaderSupplierEmail)" />
-
         </div>
         <div class="grid-child right-column">
             <SfNumericTextBox Enabled="false" Placeholder="Order No"
@@ -167,7 +167,8 @@
             </GridAggregate>
 
         </GridAggregates>
-        <GridEvents OnToolbarClick="ToolbarClickHandler" TValue="POLine"></GridEvents>
+
+        <GridEvents RowSelected="RowSelectHandler" OnToolbarClick="ToolbarClickHandler" TValue="POLine"></GridEvents>
     </SfGrid>
     <br />
 
@@ -181,7 +182,7 @@
 
 <SfDialog @ref="DialogAddEditOrderLine" IsModal="true" Width="600px" ShowCloseIcon="true" Visible="false">
     <DialogTemplates>
-        <Header> Add Order Line </Header>
+        <Header> @dialogHeaderText </Header>
     </DialogTemplates>
     <EditForm Model="@addeditOrderLine" OnValidSubmit="@OrderLineSave">
         <DataAnnotationsValidator />
@@ -202,11 +203,10 @@
             <SfTextBox Enabled="true" Placeholder="Product Description"
                        FloatLabelType="@FloatLabelType.Always"
                        @bind-Value="addeditOrderLine.POLineProductDescription"></SfTextBox>
-            <div class=flex-container>
-                <ValidationMessage For="@(() => addeditOrderLine.POLineProductDescription)" />
-            </div>
         </div>
         <div class=flex-container>
+            <ValidationMessage For="@(() => addeditOrderLine.POLineProductDescription)" />
+        </div><div class=flex-container>
             <SfNumericTextBox Enabled="true" Placeholder="Quantity"
                               FloatLabelType="@FloatLabelType.Always"
                               ShowSpinButton="false"
@@ -225,7 +225,6 @@
                               @bind-Value="addeditOrderLine.POLineProductUnitPrice"
                               @onfocusout='@POLineCalc'>
             </SfNumericTextBox>
-
 
             <SfNumericTextBox Enabled="false" Placeholder="Net Price"
                               FloatLabelType="@FloatLabelType.Always"
@@ -283,7 +282,22 @@
         </div>
     </EditForm>
 </SfDialog>
+
+<SfDialog @ref="DialogDeleteOrderLine" IsModal="true" Width="500px" ShowCloseIcon="true" Visible="false">
+    <DialogTemplates>
+        <Header> Confirm Delete </Header>
+        <Content>
+            <span class="text-danger">Please confirm that you want to delete this record</span>
+        </Content>
+    </DialogTemplates>
+    <DialogButtons>
+        <DialogButton Content="Delete" IsPrimary="true" OnClick="@ConfirmDeleteYes" />
+        <DialogButton Content="Cancel" IsPrimary="false" OnClick="@ConfirmDeleteNo" />
+    </DialogButtons>
+</SfDialog>
+
 <WarningPage @ref="Warning" WarningHeaderMessage="@WarningHeaderMessage" WarningContentMessage="@WarningContentMessage" />
+
 <style>
     .grid-container {
         display: grid;
@@ -303,18 +317,13 @@
 
 
 @code {
-    public bool supplierEnabled { get; set; } = true;
-
-    WarningPage Warning;
-    string WarningHeaderMessage = "";
-    string WarningContentMessage = "";
-
     POHeader orderaddedit = new POHeader();
     IEnumerable<Supplier> supplier;
     IEnumerable<Product> product;
     IEnumerable<Tax> tax;
 
     string pagetitle = "";
+    string dialogHeaderText = "";
 
     private string UserName;
 
@@ -323,7 +332,18 @@
     private List<ItemModel> Toolbaritems = new List<ItemModel>();
 
     SfDialog DialogAddEditOrderLine;
+    SfDialog DialogDeleteOrderLine;
+
     public POLine addeditOrderLine = new POLine();
+
+    WarningPage Warning;
+    string WarningHeaderMessage = "";
+    string WarningContentMessage = "";
+
+    public bool supplierEnabled { get; set; } = true;
+
+    private int tmpPOLineID { get; set; } = 0;
+    private int selectedPOLineID { get; set; } = 0;
 
     [Parameter]
     public int POHeaderID { get; set; }
@@ -384,21 +404,25 @@
         if (POHeaderID == 0)
         {
             //Save the record
+            //bool Successs = await POHeaderService.POHeaderInsert(orderaddedit);
+
             int HeaderID = await POHeaderService.POHeaderInsert(
-                orderaddedit.POHeaderOrderDate,
-                orderaddedit.POHeaderSupplierID,
-                orderaddedit.POHeaderSupplierAddress1,
-                orderaddedit.POHeaderSupplierAddress2,
-                orderaddedit.POHeaderSupplierAddress3,
-                orderaddedit.POHeaderSupplierPostCode,
-                orderaddedit.POHeaderSupplierEmail,
-                orderaddedit.POHeaderRequestedBy
-                );
+                           orderaddedit.POHeaderOrderDate,
+                           orderaddedit.POHeaderSupplierID,
+                           orderaddedit.POHeaderSupplierAddress1,
+                           orderaddedit.POHeaderSupplierAddress2,
+                           orderaddedit.POHeaderSupplierAddress3,
+                           orderaddedit.POHeaderSupplierPostCode,
+                           orderaddedit.POHeaderSupplierEmail,
+                           orderaddedit.POHeaderRequestedBy
+                           );
+
             foreach (var individualPOLine in orderLines)
             {
                 individualPOLine.POLineHeaderID = HeaderID;
                 bool Success = await POLineService.POLineInsert(individualPOLine);
             }
+
             NavigationManager.NavigateTo("/");
         }
         else
@@ -417,6 +441,7 @@
     {
         if (args.Item.Text == "Add")
         {
+            dialogHeaderText = "Add an Order Line";
             //Code for adding goes here
             //Check that a supplier has been selected from the drop-down list
             if (orderaddedit.POHeaderSupplierID == 0)
@@ -433,73 +458,130 @@
                 addeditOrderLine.POLineProductID = 0;
                 await this.DialogAddEditOrderLine.Show();
             }
+
         }
 
         if (args.Item.Text == "Edit")
         {
-            //Code for adding goes here
+            dialogHeaderText = "Edit an Order Line";
+            //Code for edit goes here
+            //Check that an order line has been selected
+            if (selectedPOLineID == 0)
+            {
+                WarningHeaderMessage = "Warning!";
+                WarningContentMessage = "Please select an Order Line from the grid.";
+                Warning.OpenDialog();
+            }
+            else
+            {
+                //populate addeditOrderLine (temporary data set used for the editing process)
+                addeditOrderLine = orderLines.Where(x => x.POLineID == selectedPOLineID).FirstOrDefault();
+                StateHasChanged();
+                await this.DialogAddEditOrderLine.Show();
+            }
         }
 
         if (args.Item.Text == "Delete")
         {
-            //Code for adding goes here
+            //Code for delete goes here
+            if (selectedPOLineID == 0)
+            {
+                WarningHeaderMessage = "Warning!";
+                WarningContentMessage = "Please select an Order Line from the grid.";
+                Warning.OpenDialog();
+            }
+            else
+            {
+                await this.DialogDeleteOrderLine.Show();
+            }
         }
     }
 
-    private void OrderLineSave()
+    private async Task OrderLineSave()
     {
-
-        //Check that a product has been selected from the drop-down list
-        if (addeditOrderLine.POLineProductCode == null || addeditOrderLine.POLineProductCode == "")
+        if (addeditOrderLine.POLineID == 0)
         {
-            WarningHeaderMessage = "Warning!";
-            WarningContentMessage = "Please select a Product.";
-            Warning.OpenDialog();
-        }
+            //Code to save order line goes here
+            //Check that a product has been selected from the drop-down list
+            if (addeditOrderLine.POLineProductCode == null || addeditOrderLine.POLineProductCode == "")
+            {
+                WarningHeaderMessage = "Warning!";
+                WarningContentMessage = "Please select a Product.";
+                Warning.OpenDialog();
+            }
+            //And check that a tax rate has been selected from the drop-down list
+            else if (addeditOrderLine.POLineTaxID == 0)
+            {
+                WarningHeaderMessage = "Warning!";
+                WarningContentMessage = "Please select a Tax Rate.";
+                Warning.OpenDialog();
+            }
+            else
+            {
+                POLineCalc();
+                tmpPOLineID = tmpPOLineID - 1;        //used to provide a temporary ID for POLineID
 
-        //And check that a tax rate has been selected from the drop-down list
-        else if (addeditOrderLine.POLineTaxID == 0)
-        {
-            WarningHeaderMessage = "Warning!";
-            WarningContentMessage = "Please select a Tax Rate.";
-            Warning.OpenDialog();
+                orderLines.Add(new POLine
+                {
+                    POLineID = tmpPOLineID,
+                    POLineHeaderID = 0,
+                    POLineProductID = addeditOrderLine.POLineProductID,
+                    POLineProductCode = addeditOrderLine.POLineProductCode,
+                    POLineProductDescription = addeditOrderLine.POLineProductDescription,
+                    POLineProductQuantity = addeditOrderLine.POLineProductQuantity,
+                    POLineProductUnitPrice = addeditOrderLine.POLineProductUnitPrice,
+                    POLineNetPrice = addeditOrderLine.POLineNetPrice,
+                    POLineTaxID = addeditOrderLine.POLineTaxID,
+                    POLineTaxRate = addeditOrderLine.POLineTaxRate,
+                    POLineTaxAmount = addeditOrderLine.POLineTaxAmount,
+                    POLineGrossPrice = addeditOrderLine.POLineGrossPrice
+                });
+
+
+                OrderLinesGrid.Refresh();
+                StateHasChanged();                  //<-----  THIS IS ABSOLUTELY ESSENTIAL
+
+                //addeditOrderLine = new POLine();  //<-----  THIS gives errors (nulls)
+
+                addeditOrderLine.POLineProductID = 0;
+                addeditOrderLine.POLineProductCode = "";
+                addeditOrderLine.POLineProductDescription = "";
+                addeditOrderLine.POLineProductQuantity = 0;
+                addeditOrderLine.POLineProductUnitPrice = 0;
+                addeditOrderLine.POLineNetPrice = 0;
+                //addeditOrderLine.POLineTaxID = 0;
+                //addeditOrderLine.POLineTaxRate = 0;
+                addeditOrderLine.POLineTaxAmount = 0;
+                addeditOrderLine.POLineGrossPrice = 0;
+
+                //We now have order lines, so prevent user from changing the supplier
+                supplierEnabled = false;
+            }
         }
         else
         {
-            //Code to save order line goes here
-            orderLines.Add(new POLine
+            //An order line is being edited
+            //Check that a product has been selected from the drop-down list
+            if (addeditOrderLine.POLineProductCode == null || addeditOrderLine.POLineProductCode == "")
             {
-                POLineHeaderID = 0,
-                POLineProductID = addeditOrderLine.POLineProductID,
-                POLineProductCode = addeditOrderLine.POLineProductCode,
-                POLineProductDescription = addeditOrderLine.POLineProductDescription,
-                POLineProductQuantity = addeditOrderLine.POLineProductQuantity,
-                POLineProductUnitPrice = addeditOrderLine.POLineProductUnitPrice,
-                POLineNetPrice = addeditOrderLine.POLineNetPrice,
-                POLineTaxRate = addeditOrderLine.POLineTaxRate,
-                POLineTaxAmount = addeditOrderLine.POLineTaxAmount,
-                POLineGrossPrice = addeditOrderLine.POLineGrossPrice
-            });
-
-            OrderLinesGrid.Refresh();
-            StateHasChanged();                  //<-----  THIS IS ABSOLUTELY ESSENTIAL
-
-            //addeditOrderLine = new POLine();  //<-----  THIS gives errors (nulls)
-
-            addeditOrderLine.POLineProductID = 0;
-            addeditOrderLine.POLineProductCode = "";
-            addeditOrderLine.POLineProductDescription = "";
-            addeditOrderLine.POLineProductQuantity = 0;
-            addeditOrderLine.POLineProductUnitPrice = 0;
-            addeditOrderLine.POLineNetPrice = 0;
-            addeditOrderLine.POLineTaxID = 0;
-            addeditOrderLine.POLineTaxRate = 0;
-            addeditOrderLine.POLineTaxAmount = 0;
-            addeditOrderLine.POLineGrossPrice = 0;
+                WarningHeaderMessage = "Warning!";
+                WarningContentMessage = "Please select a Product.";
+                Warning.OpenDialog();
+            }
+            //And check that a tax rate has been selected from the drop-down list
+            else if (addeditOrderLine.POLineTaxID == 0)
+            {
+                WarningHeaderMessage = "Warning!";
+                WarningContentMessage = "Please select a Tax Rate.";
+                Warning.OpenDialog();
+            }
+            else
+            {
+                OrderLinesGrid.Refresh();
+                StateHasChanged();
+                await CloseDialog();                //No need to keep dialog open
+            }
         }
-
-        //We now have order lines, so prevent user from changing the supplier
-        supplierEnabled = false;
     }
 
     private async Task CloseDialog()
@@ -507,8 +589,7 @@
         await this.DialogAddEditOrderLine.Hide();
     }
 
-    private void OnChangeProduct(Syncfusion.Blazor.DropDowns.SelectEventArgs<Product>
-args)
+    private void OnChangeProduct(Syncfusion.Blazor.DropDowns.SelectEventArgs<Product> args)
     {
         this.addeditOrderLine.POLineProductCode = args.ItemData.ProductCode;
         this.addeditOrderLine.POLineProductDescription = args.ItemData.ProductDescription;
@@ -516,8 +597,7 @@ args)
         POLineCalc();
     }
 
-    private void OnChangeTax(Syncfusion.Blazor.DropDowns.SelectEventArgs<Tax>
-        args)
+    private void OnChangeTax(Syncfusion.Blazor.DropDowns.SelectEventArgs<Tax> args)
     {
         // int testTaxId = args.ItemData.TaxID;
         this.addeditOrderLine.POLineTaxRate = args.ItemData.TaxRate;
@@ -529,5 +609,31 @@ args)
         addeditOrderLine.POLineNetPrice = addeditOrderLine.POLineProductUnitPrice * addeditOrderLine.POLineProductQuantity;
         addeditOrderLine.POLineTaxAmount = addeditOrderLine.POLineNetPrice.Value * addeditOrderLine.POLineTaxRate;
         addeditOrderLine.POLineGrossPrice = addeditOrderLine.POLineNetPrice.Value * (1 + addeditOrderLine.POLineTaxRate);
+    }
+
+    public void RowSelectHandler(RowSelectEventArgs<POLine> args)
+    {
+        //{args.Data} returns the current selected records.
+        selectedPOLineID = args.Data.POLineID;
+    }
+
+    private void OrderLineDelete()
+    {
+        var itemToRemove = orderLines.Single(x => x.POLineID == selectedPOLineID);
+        orderLines.Remove(itemToRemove);
+        OrderLinesGrid.Refresh();
+    }
+
+    public async void ConfirmDeleteNo()
+    {
+        await DialogDeleteOrderLine.Hide();
+        selectedPOLineID = 0;
+    }
+
+    public async void ConfirmDeleteYes()
+    {
+        OrderLineDelete();
+        await this.DialogDeleteOrderLine.Hide();
+        selectedPOLineID = 0;
     }
 }
