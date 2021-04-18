@@ -9,7 +9,7 @@
     <br />
     <SfGrid DataSource="@poheader"
             Toolbar="Toolbaritems">
-        <GridEvents OnToolbarClick="ToolbarClickHandler" TValue="POHeader"></GridEvents>
+        <GridEvents RowSelected="RowSelectHandler" OnToolbarClick="ToolbarClickHandler" TValue="POHeader"></GridEvents>
         <GridColumns>
             <GridColumn Field="@nameof(POHeader.POHeaderOrderNumber)"
                         HeaderText="No"
@@ -42,6 +42,8 @@
         </GridColumns>
     </SfGrid>
 
+    <WarningPage @ref="Warning" WarningHeaderMessage="@WarningHeaderMessage" WarningContentMessage="@WarningContentMessage" />
+
 </div>
 
 @code {
@@ -52,6 +54,12 @@
     private List<ItemModel> Toolbaritems = new List<ItemModel>();
 
     int POHeaderID = 0;
+
+    private int selectedPOHeaderID { get; set; } = 0;
+
+    WarningPage Warning;
+    string WarningHeaderMessage = "";
+    string WarningContentMessage = "";
 
     protected override async Task OnInitializedAsync()
     {
@@ -76,7 +84,19 @@
 
         if (args.Item.Text == "Edit")
         {
-            //Code for editing
+
+            //Code for editing - Check that an Order has been selected from the grid
+            if (selectedPOHeaderID == 0)
+            {
+                WarningHeaderMessage = "Warning!";
+                WarningContentMessage = "Please select an Order from the grid.";
+                Warning.OpenDialog();
+            }
+            else
+            {
+                NavigationManager.NavigateTo($"/purchaseorder/{selectedPOHeaderID}");
+            }
+
         }
 
         if (args.Item.Text == "Edit")
@@ -84,5 +104,10 @@
             //Code for deleting
         }
     }
+
+    public void RowSelectHandler(RowSelectEventArgs<POHeader> args)
+    {
+        //{args.Data} returns the current selected records.
+        selectedPOHeaderID = args.Data.POHeaderID;
+    }
 }
-5

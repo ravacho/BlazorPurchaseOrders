@@ -167,7 +167,6 @@
             </GridAggregate>
 
         </GridAggregates>
-
         <GridEvents RowSelected="RowSelectHandler" OnToolbarClick="ToolbarClickHandler" TValue="POLine"></GridEvents>
     </SfGrid>
     <br />
@@ -215,7 +214,6 @@
                               @bind-Value="addeditOrderLine.POLineProductQuantity"
                               @onfocusout='@POLineCalc'>
             </SfNumericTextBox>
-
 
             <SfNumericTextBox Enabled="true" Placeholder="Unit Price"
                               FloatLabelType="@FloatLabelType.Always"
@@ -321,6 +319,7 @@
     IEnumerable<Supplier> supplier;
     IEnumerable<Product> product;
     IEnumerable<Tax> tax;
+    IEnumerable<POLine> orderLinesByPOHeader;
 
     string pagetitle = "";
     string dialogHeaderText = "";
@@ -331,9 +330,10 @@
     public List<POLine> orderLines = new List<POLine>();
     private List<ItemModel> Toolbaritems = new List<ItemModel>();
 
+    private List<int> OrderLinesToBeDeleted = new List<int>();
+
     SfDialog DialogAddEditOrderLine;
     SfDialog DialogDeleteOrderLine;
-
     public POLine addeditOrderLine = new POLine();
 
     WarningPage Warning;
@@ -353,7 +353,6 @@
     {
         supplier = await SupplierService.SupplierList();
         orderaddedit.POHeaderOrderDate = DateTime.Now;
-        //product = await ProductService.ProductList();
         tax = await TaxService.TaxList();
 
         if (POHeaderID == 0)
@@ -363,6 +362,10 @@
         else
         {
             pagetitle = "Edit an Order";
+            orderaddedit = await POHeaderService.POHeader_GetOne(POHeaderID);
+            orderLinesByPOHeader = await POLineService.POLine_GetByPOHeader(POHeaderID);
+            orderLines = orderLinesByPOHeader.ToList(); //Convert from IEnumable to List
+            supplierEnabled = false;
         }
 
         //Get user if logged in and populate the 'Requested by' column
@@ -386,7 +389,7 @@
 
     }
 
-    private async Task OnChangeSupplier(Syncfusion.Blazor.DropDowns.ChangeEventArgs<int, Supplier> args)
+    private void OnChangeSupplier(Syncfusion.Blazor.DropDowns.ChangeEventArgs<int, Supplier> args)
     {
         this.orderaddedit.POHeaderSupplierAddress1 = args.ItemData.SupplierAddress1;
         this.orderaddedit.POHeaderSupplierAddress2 = args.ItemData.SupplierAddress2;
@@ -394,8 +397,6 @@
         this.orderaddedit.POHeaderSupplierPostCode = args.ItemData.SupplierPostCode;
         this.orderaddedit.POHeaderSupplierEmail = args.ItemData.SupplierEmail;
 
-        //Refresh product to select only those products for this supplier (and products with null suppliers)
-        product = await ProductService.ProductListBySupplier(args.ItemData.SupplierID);
     }
 
     // Executes OnValidSubmit of EditForm above
@@ -403,8 +404,7 @@
     {
         if (POHeaderID == 0)
         {
-            //Save the record
-            //bool Successs = await POHeaderService.POHeaderInsert(orderaddedit);
+            //Save the record - 1st - the POHeader
 
             int HeaderID = await POHeaderService.POHeaderInsert(
                            orderaddedit.POHeaderOrderDate,
@@ -417,6 +417,7 @@
                            orderaddedit.POHeaderRequestedBy
                            );
 
+            //2nd - the POLines
             foreach (var individualPOLine in orderLines)
             {
                 individualPOLine.POLineHeaderID = HeaderID;
@@ -427,6 +428,33 @@
         }
         else
         {
+            //Order is being edited
+            //POHeader
+            bool Success = await POHeaderService.POHeaderUpdate(orderaddedit);
+
+            //POLines
+            foreach (var individualPOLine in orderLines)
+            {
+                //If POLineHeaderID is positive it means it has been edited during the edit of this order
+                if (individualPOLine.POLineID > 0)
+                {
+                    Success = await POLineService.POLineUpdate(individualPOLine);
+                }
+                else
+                //If POLineID is negative it means it has been added during the edit of this order
+                {
+                    individualPOLine.POLineHeaderID = POHeaderID;
+                    Success = await POLineService.POLineInsert(individualPOLine);
+                }
+            }
+
+            foreach (var individualPOLine in OrderLinesToBeDeleted)
+            {
+                Success = await POLineService.POLineDeleteOne(individualPOLine);
+            }
+            //Clear the list of POLines to be deleted
+            OrderLinesToBeDeleted.Clear();
+
             NavigationManager.NavigateTo("/");
         }
     }
@@ -439,10 +467,14 @@
 
     public async Task ToolbarClickHandler(Syncfusion.Blazor.Navigations.ClickEventArgs args)
     {
+
+        //Refresh product to select only those products for this supplier (and products with null suppliers)
+        product = await ProductService.ProductListBySupplier(orderaddedit.POHeaderSupplierID);
+
         if (args.Item.Text == "Add")
         {
-            dialogHeaderText = "Add an Order Line";
             //Code for adding goes here
+            dialogHeaderText = "Add an Order Line";
             //Check that a supplier has been selected from the drop-down list
             if (orderaddedit.POHeaderSupplierID == 0)
             {
@@ -464,7 +496,6 @@
         if (args.Item.Text == "Edit")
         {
             dialogHeaderText = "Edit an Order Line";
-            //Code for edit goes here
             //Check that an order line has been selected
             if (selectedPOLineID == 0)
             {
@@ -483,7 +514,7 @@
 
         if (args.Item.Text == "Delete")
         {
-            //Code for delete goes here
+            //Code for adding goes here
             if (selectedPOLineID == 0)
             {
                 WarningHeaderMessage = "Warning!";
@@ -501,7 +532,7 @@
     {
         if (addeditOrderLine.POLineID == 0)
         {
-            //Code to save order line goes here
+            //Code to save new order line goes here
             //Check that a product has been selected from the drop-down list
             if (addeditOrderLine.POLineProductCode == null || addeditOrderLine.POLineProductCode == "")
             {
@@ -531,10 +562,10 @@
                     POLineProductQuantity = addeditOrderLine.POLineProductQuantity,
                     POLineProductUnitPrice = addeditOrderLine.POLineProductUnitPrice,
                     POLineNetPrice = addeditOrderLine.POLineNetPrice,
-                    POLineTaxID = addeditOrderLine.POLineTaxID,
                     POLineTaxRate = addeditOrderLine.POLineTaxRate,
                     POLineTaxAmount = addeditOrderLine.POLineTaxAmount,
-                    POLineGrossPrice = addeditOrderLine.POLineGrossPrice
+                    POLineGrossPrice = addeditOrderLine.POLineGrossPrice,
+                    POLineTaxID = addeditOrderLine.POLineTaxID
                 });
 
 
@@ -549,8 +580,8 @@
                 addeditOrderLine.POLineProductQuantity = 0;
                 addeditOrderLine.POLineProductUnitPrice = 0;
                 addeditOrderLine.POLineNetPrice = 0;
-                //addeditOrderLine.POLineTaxID = 0;
-                //addeditOrderLine.POLineTaxRate = 0;
+                //addeditOrderLine.POLineTaxID = 0;                 //Leave - highly likely to be same as previous record
+                //addeditOrderLine.POLineTaxRate = 0;               //Leave - highly likely to be same as previous record
                 addeditOrderLine.POLineTaxAmount = 0;
                 addeditOrderLine.POLineGrossPrice = 0;
 
@@ -558,31 +589,31 @@
                 supplierEnabled = false;
             }
         }
+
+        else
+        //An order line is being edited
+        //Check that a product has been selected from the drop-down list
+        if (addeditOrderLine.POLineProductCode == null || addeditOrderLine.POLineProductCode == "")
+        {
+            WarningHeaderMessage = "Warning!";
+            WarningContentMessage = "Please select a Product.";
+            Warning.OpenDialog();
+        }
+        //And check that a tax rate has been selected from the drop-down list
+        else if (addeditOrderLine.POLineTaxID == 0)
+        {
+            WarningHeaderMessage = "Warning!";
+            WarningContentMessage = "Please select a Tax Rate.";
+            Warning.OpenDialog();
+        }
         else
         {
-            //An order line is being edited
-            //Check that a product has been selected from the drop-down list
-            if (addeditOrderLine.POLineProductCode == null || addeditOrderLine.POLineProductCode == "")
-            {
-                WarningHeaderMessage = "Warning!";
-                WarningContentMessage = "Please select a Product.";
-                Warning.OpenDialog();
-            }
-            //And check that a tax rate has been selected from the drop-down list
-            else if (addeditOrderLine.POLineTaxID == 0)
-            {
-                WarningHeaderMessage = "Warning!";
-                WarningContentMessage = "Please select a Tax Rate.";
-                Warning.OpenDialog();
-            }
-            else
-            {
-                OrderLinesGrid.Refresh();
-                StateHasChanged();
-                await CloseDialog();                //No need to keep dialog open
-            }
+            OrderLinesGrid.Refresh();
+            StateHasChanged();                  //<-----  THIS IS ABSOLUTELY ESSENTIAL
+            await CloseDialog();                //No need to keep dialog open
         }
     }
+
 
     private async Task CloseDialog()
     {
@@ -619,6 +650,15 @@
 
     private void OrderLineDelete()
     {
+        if (selectedPOLineID > 0)
+        {
+            //Order line has already been saved to the database, and was present at start of this order edit
+            //Add to list of orders to be deleted when order is saved
+            OrderLinesToBeDeleted.Add(selectedPOLineID);
+        }
+
+        //And then delete from orderLines
+
         var itemToRemove = orderLines.Single(x => x.POLineID == selectedPOLineID);
         orderLines.Remove(itemToRemove);
         OrderLinesGrid.Refresh();
